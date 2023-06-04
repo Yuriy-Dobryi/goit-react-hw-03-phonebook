@@ -38,21 +38,20 @@ export class App extends Component {
   }
 
   componentDidUpdate(_, prevState) {
-    const { contacts } = this.state;
-    const isContactsChanged = prevState.contacts.length !== contacts.length;
+    const { contacts, filter } = this.state;
+    const isContactsChanged = contacts.length !== prevState.contacts.length;
     const isContactsEmpty = contacts.length === 0;
 
     if (isContactsChanged) {
-      localStorage.setItem(
-        CONTACTS_KEY,
-        JSON.stringify([...contacts]));
+      localStorage.setItem(CONTACTS_KEY, JSON.stringify([...contacts]));
+      setTimeout(() => {
+        this.setState({ isBtnShow: isContactsEmpty });
+      }, 500);
       
-      this.setState({ isBtnShow: isContactsEmpty });
+    } else if (prevState.filter !== filter) {
+      const filteredContacts = contacts.filter(({ name }) => name.toLocaleLowerCase().includes(filter));
+      this.checkEmptyContacts(filteredContacts.length, 'filter');
     }
-  }
-
-  setDefaultContacts = () => {
-    this.setState({ contacts: [...DEFAULT_CONTACTS] });
   }
   
   addContact = (newContact) => {
@@ -66,23 +65,38 @@ export class App extends Component {
       return;
     }
 
-    this.setState({contacts: [...contacts, newContact]})
+    this.showOperationMessage(newContact.name, 'added');
+    this.setState({ contacts: [...contacts, newContact] })
   }
 
-  removeContact = (id) => {
+  setDefaultContacts = () => {
+    setTimeout(() => {
+      this.setState({ contacts: [...DEFAULT_CONTACTS], filter: '' });
+    }, 500);
+
+    this.setState({ isBtnShow: false });
+  }
+
+  removeContact = (id, name) => {
     const { contacts } = this.state;
     const updatedContacts = contacts.filter((contact) =>
       contact.id !== id);
 
-    this.checkEmptyContacts(updatedContacts.length, 'remove');
-    this.setState({ contacts: [...updatedContacts] });
+    this.setState({ contacts: [...updatedContacts] }, () => {
+      this.showOperationMessage(name, 'removed')
+      this.checkEmptyContacts(updatedContacts.length, 'remove');
+    });
+  }
+
+  showOperationMessage = (contactName, typeOperation) => {
+    Notify.success(`${contactName} has been ${typeOperation}`)
   }
 
   checkEmptyContacts = (contactsCount, typeOperation) => {
     if (contactsCount === 0) {
       Notify.info(typeOperation === 'remove'
         ? 'You deleted all contacts🙄'
-        : 'No contacts with this name');
+        : 'No contacts with this name🤔');
     }
   }
 
@@ -94,14 +108,9 @@ export class App extends Component {
     const { contacts } = this.state;
     const filter = this.state.filter.toLocaleLowerCase();
 
-    if (filter) {
-      const filteredContacts = contacts.filter(({ name }) => name.toLocaleLowerCase().includes(filter));
-      
-      this.checkEmptyContacts(filteredContacts.length, 'filter');
-      return filteredContacts;
-    }
-
-    return contacts;
+    return filter
+      ? contacts.filter(({ name }) => name.toLocaleLowerCase().includes(filter))
+      : contacts
   }
   
   render() {
