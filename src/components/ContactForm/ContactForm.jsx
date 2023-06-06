@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import styles from '../App.module.css';
 
 const defaultState = {
-    name: '',
-    number: '',
+  name: '',
+  number: '',
 }
 
 export class ContactForm extends Component {

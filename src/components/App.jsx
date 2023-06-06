@@ -22,7 +22,7 @@ export class App extends Component {
   state = {
     contacts: [],
     filter: '',
-    isBtnShow: false,
+    defaultContactBtn: false,
   }
 
   componentDidMount() {
@@ -32,7 +32,7 @@ export class App extends Component {
       if (localContacts && localContacts.length > 0) {
         this.setState({ contacts: [...localContacts] });
       } else {
-        this.setState({ isBtnShow: true });
+        this.setState({ defaultContactBtn: true });
       }
     }, 500);
   }
@@ -40,16 +40,28 @@ export class App extends Component {
   componentDidUpdate(_, prevState) {
     const { contacts, filter } = this.state;
     const isContactsChanged = contacts.length !== prevState.contacts.length;
+    const isFilterChanged = prevState.filter !== filter;
+
     const isContactsEmpty = contacts.length === 0;
+    const isFilterFilled = filter !== '';
+
 
     if (isContactsChanged) {
       localStorage.setItem(CONTACTS_KEY, JSON.stringify([...contacts]));
+
+      // Якщо контакти були змінені таким чином, що їх більше немає, то поле filter стає пустим (якщо цієї умови не буде, то при додаванні нового контакта/контактів, вони не відмалюються користувачу із-за старого фільтра до тих пір, поки filter не буде змінено)
+      if (isContactsEmpty) {
+        this.setState({ filter: '' });
+      }
+
+      // Якщо контакти в state були змінені, - то в localStorage записуються поточні контакти, а в state кнопки дефолтних контактів теж змінюється значення в залежності від кількості поточних контактів  
       setTimeout(() => {
-        this.setState({ isBtnShow: isContactsEmpty });
+        this.setState({ defaultContactBtn: isContactsEmpty });
       }, 500);
-      
-    } else if (prevState.filter !== filter) {
-      const filteredContacts = contacts.filter(({ name }) => name.toLocaleLowerCase().includes(filter));
+
+      // Якщо контакти в state не були змінені, а змінений був саме filter, то провіряємо чи є такий контакт (або контакти), якщо немає - виводимо повідомлення. Якщо умови isFilterFilled не буде, то якщо в state-контактах знаходиться лише один контакт, і в той же час він є відфільтрований, то після видалення буде повідомлення що такого контакту не було знайдено.
+    } else if (isFilterChanged && isFilterFilled) {
+      const filteredContacts = this.filterContacts();
       this.checkEmptyContacts(filteredContacts.length, 'filter');
     }
   }
@@ -65,8 +77,8 @@ export class App extends Component {
       return;
     }
 
-    this.showOperationMessage(newContact.name, 'added');
-    this.setState({ contacts: [...contacts, newContact] })
+    this.setState({ contacts: [...contacts, newContact] }, () =>
+      this.showOperationMessage(newContact.name, 'added'));
   }
 
   setDefaultContacts = () => {
@@ -74,7 +86,7 @@ export class App extends Component {
       this.setState({ contacts: [...DEFAULT_CONTACTS], filter: '' });
     }, 500);
 
-    this.setState({ isBtnShow: false });
+    this.setState({ defaultContactBtn: false });
   }
 
   removeContact = (id, name) => {
@@ -114,7 +126,7 @@ export class App extends Component {
   }
   
   render() {
-    const { contacts, filter, isBtnShow } = this.state;
+    const { contacts, filter, defaultContactBtn } = this.state;
     const filteredContacts = this.filterContacts();
     const isContactsEmpty = contacts.length === 0;
 
@@ -129,7 +141,7 @@ export class App extends Component {
         <div>
           <h2 className={styles.title}>Contacts</h2>
           {isContactsEmpty
-            ? isBtnShow
+            ? defaultContactBtn
               ?
               <>
                 <p>There is no contacts</p>
